@@ -1,7 +1,6 @@
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
-import { GLTFLoader } from "https://unpkg.com/three@0.127.0/examples/jsm/loaders/GLTFLoader.js";
-import * as SkeletonUtils from "https://unpkg.com/three@0.127.0/examples/jsm/utils/SkeletonUtils.js";
-//import SkeletonUtils from "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/jsm/utils/SkeletonUtils.js";
+import * as THREE from "three";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { entity } from "./Entity.js";
 
 export const load_controller = (() => {
@@ -94,7 +93,7 @@ export const load_controller = (() => {
           this.models[fullName].queue = null;
           for (let q of queue) {
             const clone = { ...glb };
-            clone.scene = SkeletonUtils.clone(clone.scene);
+            clone.scene = new SkeletonUtils.clone(clone.scene);
 
             q(clone);
           }
@@ -103,7 +102,7 @@ export const load_controller = (() => {
         this.models[fullName].queue.push(onLoad);
       } else {
         const clone = { ...this.models_[fullName].asset };
-        clone.scene = SkeletonUtils.clone(clone.scene);
+        clone.scene = new SkeletonUtils.clone(clone.scene);
 
         onLoad(clone);
       }

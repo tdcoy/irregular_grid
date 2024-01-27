@@ -1,7 +1,7 @@
-import { OrbitControls } from "https://unpkg.com/three@0.127.0/examples/jsm/controls/OrbitControls.js";
-import { EffectComposer } from "https://unpkg.com/three@0.127.0/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass } from "https://unpkg.com/three@0.127.0/examples/jsm/postprocessing/RenderPass.js";
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import * as THREE from "three";
 import { entity } from "./Entity.js";
 
 export const threejs_controller = (() => {
@@ -13,6 +13,7 @@ export const threejs_controller = (() => {
     InitEntity() {
       this.threeJS = new THREE.WebGLRenderer({
         antialias: true,
+        logarithmicDepthBuffer: true,
       });
       this.threeJS.shadowMap.enabled = true;
       this.threeJS.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -34,12 +35,13 @@ export const threejs_controller = (() => {
       const far = 1000.0;
 
       this.camera = new THREE.PerspectiveCamera(fov, apsect, near, far);
-      this.camera.position.set(35, 65, 0);
+      this.camera.position.set(-10, 50, 20);
+      this.camera.rotation.set(0, 0, 0);
       this.scene = new THREE.Scene();
       this.scene.add(this.camera);
 
       this.controls = new OrbitControls(this.camera, this.threeJS.domElement);
-      this.controls.target.set(35, 0, 35);
+      this.controls.target.set(75, 0, 75);
       this.controls.update();
 
       this.composer = new EffectComposer(this.threeJS);
@@ -113,14 +115,13 @@ export const threejs_controller = (() => {
     }
 
     Update(timeElapsed) {
-      const player = this.FindEntity("player");
+      /* const player = this.FindEntity("player");
       if (!player) {
         return;
       }
-      const pos = player.position;
-
-      this.controls.update();
-
+      const pos = player.position; */
+      //this.controls.update();
+      //this.camera.rotation.y += 0.01;
       /* this.sun.position.copy(pos);
         this.sun.position.add(new THREE.Vector3(-20, 100, 20));
         this.sun.target.position.copy(pos);

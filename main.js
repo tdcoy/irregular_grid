@@ -12,13 +12,11 @@
 7. WFC to determine what tiles can be placed where
 8. Marching Cube to place the tiles in the irregular grid
 */
-
 import { entity_manager } from "./src/EntityManager.js";
 import { entity } from "./src/Entity.js";
 import { threejs_controller } from "./src/ThreeJSController.js";
 import { load_controller } from "./src/LoadController.js";
 import { spawners } from "./src/Spawners.js";
-import { irregular_grid } from "./src/IrregularGrid.js";
 import { gizmos } from "./src/Gizmos.js";
 
 class Demo {
@@ -60,13 +58,9 @@ class Demo {
     const spawner = new entity.Entity();
     spawner.AddComponent(new spawners.LevelSpawner(basicParams));
 
-    const grid = new entity.Entity();
-    grid.AddComponent(new irregular_grid.DrawGrid(basicParams));
-
     // Add spawner to entity manager
     this.entityManager.Add(spawner, "spawners");
-    this.entityManager.Add(grid, "grid");
-    
+
     // Spawn Entities
     spawner.GetComponent("LevelSpawner").Spawn();
   }

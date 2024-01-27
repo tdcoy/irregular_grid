@@ -1,4 +1,4 @@
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
+import * as THREE from "three";
 
 export const gizmos = (() => {
   class DrawGizmos {
@@ -93,6 +93,14 @@ export const gizmos = (() => {
       cube.position.set(point.x, 0, point.y);
     }
 
+    DrawPointV3(point, color, size) {
+      const geometry = new THREE.SphereGeometry(size, 5, 2);
+      const material = new THREE.MeshBasicMaterial({ color: color });
+      const cube = new THREE.Mesh(geometry, material);
+      this.scene.add(cube);
+      cube.position.set(point.x, point.y, point.z);
+    }
+
     DrawPoints(points, color, size) {
       for (let i = 0; i < points.length; i++) {
         this.DrawPoint(points[i], color, size);
@@ -105,6 +113,74 @@ export const gizmos = (() => {
       const cube = new THREE.Mesh(geometry, material);
       this.scene.add(cube);
       cube.position.set(point.x, 0, point.y);
+    }
+
+    TextSprite(message, parameters) {
+      if (parameters === undefined) parameters = {};
+
+      var fontface = parameters.hasOwnProperty("fontface")
+        ? parameters["fontface"]
+        : "Arial";
+
+      var fontsize = parameters.hasOwnProperty("fontsize")
+        ? parameters["fontsize"]
+        : 18;
+
+      var borderThickness = parameters.hasOwnProperty("borderThickness")
+        ? parameters["borderThickness"]
+        : 4;
+
+      var borderColor = parameters.hasOwnProperty("borderColor")
+        ? parameters["borderColor"]
+        : { r: 0, g: 0, b: 0, a: 1.0 };
+
+      var backgroundColor = parameters.hasOwnProperty("backgroundColor")
+        ? parameters["backgroundColor"]
+        : { r: 255, g: 255, b: 255, a: 1.0 };
+
+      var canvas = document.createElement("canvas");
+      var context = canvas.getContext("2d");
+      context.font = "Bold " + fontsize + "px " + fontface;
+
+      // background color
+      context.fillStyle =
+        "rgba(" +
+        backgroundColor.r +
+        "," +
+        backgroundColor.g +
+        "," +
+        backgroundColor.b +
+        "," +
+        backgroundColor.a +
+        ")";
+      // border color
+      context.strokeStyle =
+        "rgba(" +
+        borderColor.r +
+        "," +
+        borderColor.g +
+        "," +
+        borderColor.b +
+        "," +
+        borderColor.a +
+        ")";
+
+      context.lineWidth = borderThickness;
+      // text color
+      context.fillStyle = "rgba(0, 0, 0, 1.0)";
+
+      context.fillText(message, borderThickness, fontsize + borderThickness);
+
+      // canvas contents will be used for a texture
+      var texture = new THREE.Texture(canvas);
+      texture.needsUpdate = true;
+
+      var spriteMaterial = new THREE.SpriteMaterial({
+        map: texture,
+      });
+      var sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(2, 2, 2);
+      return sprite;
     }
   }
 

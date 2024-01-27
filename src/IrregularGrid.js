@@ -1,6 +1,9 @@
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
+import * as THREE from "three";
 import { entity } from "./Entity.js";
 import { delaunay_triangulation } from "./DelaunayTriangulation.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { trilinear_lattice } from "./TrilinearLattice.js";
+import { tile_solver } from "./TileSolver.js";
 
 export const irregular_grid = (() => {
   class DrawGrid extends entity.Component {
@@ -13,10 +16,13 @@ export const irregular_grid = (() => {
       this.gridBuilt = false;
       this.faces = [];
       this.vertices = [];
+      this.cellSize = 10;
     }
 
-    InitComponent() {
-      var points = this.GeneratePoints(4);
+    InitComponent() {}
+
+    GenerateGrid(size) {
+      var points = this.GeneratePoints(size);
 
       // Triangulate vertices
       var triangles = new delaunay_triangulation.Triangulate(points);
@@ -157,12 +163,80 @@ export const irregular_grid = (() => {
       }
 
       // Draw Faces
-      for (let i = 0; i < this.faces.length; i++) {
+      /* for (let i = 0; i < this.faces.length; i++) {
         this.gizmos.DrawShortestPath(
           this.faces[i],
           0,
           new THREE.Color("yellow")
         );
+      } */
+
+      return this.faces;
+    }
+
+    CreateCells() {
+      for (let h = 0; h < this.faces.length; h++) {
+        let face = this.faces[h].vertexs();
+
+        //#region Create Trilinear Lattice
+        const lattice = new trilinear_lattice.TrilinearLattice(
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(10, 10, 10)
+        );
+
+        const v0 = new THREE.Vector3(face[0].vector().x, 0, face[0].vector().y);
+        const v1 = new THREE.Vector3(face[1].vector().x, 0, face[1].vector().y);
+        const v2 = new THREE.Vector3(face[2].vector().x, 0, face[2].vector().y);
+        const v3 = new THREE.Vector3(face[3].vector().x, 0, face[3].vector().y);
+        lattice.setFootPrint(v1, v0, v3, v2, 10);
+        //#endregion
+
+        // Load mesh "./dist/models/test_wall.glb"
+        const loader = new GLTFLoader();
+        loader.setPath("./dist/models/");
+        loader.load("floor.glb", (gltf) => {
+          const cube = gltf.scene;
+
+          // Shadows
+          cube.traverse(function (object) {
+            if (object.isMesh) object.castShadow = true;
+          });
+          // Stops model from disapearing
+          cube.traverse((child) => {
+            child.frustumCulled = false;
+          });
+
+          // Interpolate tile vertices to cell position
+          for (let i = 0; i < cube.children.length; i++) {
+            if (cube.children[i].isMesh) {
+              const geometry = cube.children[i].geometry;
+              const position = geometry.attributes.position;
+
+              // Get position vector
+              for (let j = 0; j < position.count; j++) {
+                let v3 = new THREE.Vector3().fromBufferAttribute(
+                  geometry.attributes.position,
+                  j
+                );
+
+                // Calculate interpolation
+                let transform = this.interpolate(
+                  lattice.cube,
+                  lattice.minBound,
+                  lattice.maxBound,
+                  v3
+                );
+
+                // Set position data
+                geometry.attributes.position.array[j * 3] = transform.x;
+                geometry.attributes.position.array[j * 3 + 1] = transform.y;
+                geometry.attributes.position.array[j * 3 + 2] = transform.z;
+              }
+            }
+          }
+
+          this.params.scene.add(cube);
+        });
       }
     }
 
@@ -267,64 +341,6 @@ export const irregular_grid = (() => {
       return used;
     }
 
-    CreateMesh(faces, offset, color) {
-      let meshes = [];
-      let meshColor = color;
-
-      for (let i = 0; i < faces.length; i++) {
-        const geometry = new THREE.BufferGeometry();
-
-        var verts = [];
-        var indices = [];
-
-        let faceVerts = faces[i].vertices();
-
-        for (let j = 0; j < faceVerts.length; j++) {
-          verts.push(faceVerts[j].x);
-          verts.push(offset);
-          verts.push(faceVerts[j].y);
-        }
-
-        const vertices = new Float32Array(verts);
-
-        //const uvs = new Float32Array([0, 0, 0, 1, 1, 0]);
-        if (faceVerts.length == 4) {
-          indices = [0, 1, 2, 2, 3, 0];
-        }
-
-        if (faceVerts.length == 3) {
-          console.log("tri");
-          indices = [0, 1, 2, 0];
-        }
-
-        //const normals = [0, 0, 1];
-
-        geometry.setIndex(indices);
-        geometry.setAttribute(
-          "position",
-          new THREE.BufferAttribute(vertices, 3)
-        );
-        //geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-        /* geometry.setAttribute(
-          "normal",
-          new THREE.Float32BufferAttribute(normals, faces[i].vertices.length)
-        );
- */
-        if (color == undefined) {
-          meshColor = THREE.MathUtils.randInt(0, 0xffffff);
-        }
-
-        const material = new THREE.MeshStandardMaterial({ color: meshColor });
-        const mesh = new THREE.Mesh(geometry, material);
-        this.scene.add(mesh);
-        mesh.position.set(0, 0, 0);
-
-        meshes.push(mesh);
-      }
-
-      return meshes;
-    }
-
     CreateEdges(faces) {
       for (let i = 0; i < faces.length; i++) {
         let e = faces.edges();
@@ -340,7 +356,7 @@ export const irregular_grid = (() => {
     }
 
     GeneratePoints(numCells) {
-      var radius = 10;
+      var radius = 20;
       var cells = numCells;
       var points = [];
 
@@ -572,8 +588,6 @@ export const irregular_grid = (() => {
         }
       }
     }
-
-    Update(timeElapsed) {}
   }
 
   class Face {
@@ -583,6 +597,45 @@ export const irregular_grid = (() => {
       this._edges = this.setEdges();
       this._center = undefined;
       this._adjacent = [];
+      this._room = null;
+      this._fCost = 0;
+      this._hCost = 0;
+      this._gCost = 0;
+      this._parent = null;
+    }
+
+    clear() {
+      this._fCost = 0;
+      this._hCost = 0;
+      this._gCost = 0;
+      this._parent = null;
+    }
+
+    fCost() {
+      return this._fCost;
+    }
+
+    hCost() {
+      return this._hCost;
+    }
+
+    gCost() {
+      return this._gCost;
+    }
+
+    room() {
+      return this._room;
+    }
+
+    parent() {
+      return this._parent;
+    }
+
+    isAvailable() {
+      if (this._room == null) {
+        return true;
+      }
+      return false;
     }
 
     setEdges() {
@@ -624,6 +677,26 @@ export const irregular_grid = (() => {
       }
 
       this._adjacent = adj;
+    }
+
+    setRoom(r) {
+      this._room = r;
+    }
+
+    setParent(p) {
+      this._parent = p;
+    }
+
+    setfCost(c) {
+      this._fCost = c;
+    }
+
+    sethCost(c) {
+      this._hCost = c;
+    }
+
+    setgCost(c) {
+      this._gCost = c;
     }
 
     vertices() {
@@ -735,6 +808,10 @@ export const irregular_grid = (() => {
       }
       return this._center;
     }
+
+    equals(f) {
+      return f.center() == this.center();
+    }
   }
 
   class Edge {
@@ -814,5 +891,6 @@ export const irregular_grid = (() => {
       this.v2 = v;
     }
   }
+
   return { DrawGrid: DrawGrid };
 })();
